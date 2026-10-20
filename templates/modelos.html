@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post, csrf_input with context %}
+{% block titulo %}Checklists{% endblock %}
+{% block conteudo %}
+<h1>Modelos de checklist</h1>
+<p class="suave">Estas tarefas são copiadas para cada nova admissão ou demissão. Os dias são contados a partir
+  da data de início (admissão) ou do último dia de trabalho (demissão). Use números negativos para tarefas
+  que precisam acontecer antes. Alterar o modelo não muda processos já criados.</p>
+<div class="grade">
+{% for tipo, nome in TIPOS_PROCESSO.items() %}
+  <div>
+    <h2>{{ nome }}</h2>
+    <div class="tabela"><table style="min-width:0">
+      <tr><th>Dias</th><th>Tarefa</th><th></th></tr>
+      {% for i in itens[tipo] %}
+      <tr>
+        <td>{{ '%+d'|format(i.dias_relativos) if i.dias_relativos else 'no dia' }}</td>
+        <td>{{ i.descricao }}</td>
+        <td>{{ botao_post(url_for('modelo_excluir', item_id=i.id), 'Remover', 'pequeno perigo', 'Remover esta tarefa do modelo?') }}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    <form method="post" class="card" style="margin-top:10px">
+      {{ csrf_input() }}
+      <input type="hidden" name="tipo" value="{{ tipo }}">
+      <label for="descricao-{{ tipo }}">Nova tarefa</label>
+      <input id="descricao-{{ tipo }}" name="descricao" required>
+      <label for="dias-{{ tipo }}">Dias em relação à data</label>
+      <input id="dias-{{ tipo }}" name="dias_relativos" type="number" value="0" required>
+      <div class="acoes"><button>Adicionar</button></div>
+    </form>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

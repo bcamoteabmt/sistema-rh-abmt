@@ -1,0 +1,63 @@
+:root {
+  --bg: #f5f6f8; --card: #fff; --texto: #1f2933; --suave: #616e7c; --borda: #dde2e8;
+  --primaria: #1d5fa8; --primaria-escura: #164b85;
+  --atrasado: #c62828; --urgente: #e67700; --proximo: #b08900; --ok: #2e7d32;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       background: var(--bg); color: var(--texto); font-size: 15px; line-height: 1.5; }
+a { color: var(--primaria); }
+header { background: var(--primaria); color: #fff; }
+header .barra { max-width: 1100px; margin: 0 auto; padding: 0 16px; display: flex;
+                align-items: center; gap: 20px; flex-wrap: wrap; min-height: 56px; }
+header .marca { font-weight: 700; font-size: 17px; color: #fff; text-decoration: none; }
+header nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+header nav a { color: #e3ecf7; text-decoration: none; padding: 6px 10px; border-radius: 6px; }
+header nav a:hover, header nav a.ativo { background: rgba(255,255,255,.15); color: #fff; }
+header .conta { display: flex; gap: 10px; align-items: center; font-size: 13px; }
+header .conta a, header .conta button { color: #e3ecf7; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 24px; margin: 0 0 16px; }
+h2 { font-size: 18px; margin: 28px 0 10px; }
+.cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cabecalho h1 { margin: 0; }
+.card { background: var(--card); border: 1px solid var(--borda); border-radius: 10px; padding: 16px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.suave { color: var(--suave); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; background: var(--card); }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; color: var(--suave); letter-spacing: .03em; }
+.tabela { border: 1px solid var(--borda); border-radius: 10px; overflow-x: auto; }
+.tabela table { min-width: 560px; }
+.btn, button { display: inline-block; background: var(--primaria); color: #fff; border: 0;
+               border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; text-decoration: none; }
+.btn:hover, button:hover { background: var(--primaria-escura); }
+.btn.secundario, button.secundario { background: #fff; color: var(--primaria); border: 1px solid var(--borda); }
+button.perigo { background: #fff; color: var(--atrasado); border: 1px solid #f0c4c4; }
+button.link { background: none; padding: 0; color: inherit; text-decoration: underline; }
+button.pequeno, .btn.pequeno { padding: 3px 9px; font-size: 13px; }
+form.inline { display: inline; }
+label { display: block; font-weight: 600; margin: 12px 0 4px; font-size: 14px; }
+input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--borda);
+                          border-radius: 6px; font: inherit; background: #fff; }
+textarea { min-height: 260px; }
+.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 16px; }
+.acoes { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+.flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+.flash.ok { background: #e8f5e9; color: var(--ok); }
+.flash.erro { background: #fdecea; color: var(--atrasado); }
+.selo { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px;
+        background: #eef1f5; color: var(--suave); white-space: nowrap; }
+.selo.atrasado, tr.atrasado .data { color: var(--atrasado); }
+tr.atrasado td:first-child { border-left: 4px solid var(--atrasado); }
+tr.urgente td:first-child { border-left: 4px solid var(--urgente); }
+tr.proximo td:first-child { border-left: 4px solid var(--proximo); }
+.aviso { color: var(--urgente); font-size: 12px; }
+.progresso { background: #eef1f5; border-radius: 6px; height: 8px; overflow: hidden; min-width: 80px; }
+.progresso span { display: block; height: 100%; background: var(--ok); }
+.feito { color: var(--suave); text-decoration: line-through; }
+.conteudo { white-space: pre-wrap; }
+.legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--suave); margin: 6px 0 12px; }
+.legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+.login { max-width: 380px; margin: 60px auto; }
+@media (max-width: 640px) { header .conta { width: 100%; padding-bottom: 8px; } }

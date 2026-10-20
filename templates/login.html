@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input with context %}
+{% block titulo %}Entrar{% endblock %}
+{% block conteudo %}
+<div class="card login">
+  <h1>RH ABMT</h1>
+  <form method="post">
+    {{ csrf_input() }}
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" required autofocus>
+    <label for="senha">Senha</label>
+    <input id="senha" name="senha" type="password" required>
+    <div class="acoes"><button>Entrar</button></div>
+  </form>
+</div>
+{% endblock %}

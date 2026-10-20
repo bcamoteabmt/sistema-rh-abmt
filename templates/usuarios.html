@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post, csrf_input with context %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<h1>Usuários</h1>
+<p class="suave"><strong>RH</strong> cadastra e edita tudo. <strong>Gestor</strong> consulta procedimentos,
+  vê os prazos e marca tarefas como concluídas.</p>
+<div class="tabela"><table>
+  <tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Situação</th><th></th></tr>
+  {% for u in lista %}
+  <tr>
+    <td>{{ u.nome }}</td><td>{{ u.email }}</td><td>{{ PAPEIS[u.papel] }}</td>
+    <td>{{ 'Ativo' if u.ativo else 'Desativado' }}</td>
+    <td>{% if u.id != usuario.id %}{{ botao_post(url_for('usuario_alternar', usuario_id=u.id), 'Desativar' if u.ativo else 'Reativar', 'pequeno secundario') }}{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+
+<h2>Novo usuário</h2>
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div><label for="nome">Nome</label><input id="nome" name="nome" required></div>
+    <div><label for="email">E-mail</label><input id="email" name="email" type="email" required></div>
+    <div><label for="senha">Senha inicial (mín. 8)</label><input id="senha" name="senha" type="password" minlength="8" required></div>
+    <div><label for="papel">Perfil</label>
+      <select id="papel" name="papel">{% for k, v in PAPEIS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+    </div>
+  </div>
+  <div class="acoes"><button>Criar usuário</button></div>
+</form>
+{% endblock %}

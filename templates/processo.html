@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post, csrf_input, data, legenda, barra with context %}
+{% block titulo %}{{ p.colaborador }}{% endblock %}
+{% block conteudo %}
+<p><a href="{{ url_for('processos') }}">← Admissões e demissões</a></p>
+<div class="cabecalho">
+  <h1>{{ TIPOS_PROCESSO[p.tipo] }}: {{ p.colaborador }}</h1>
+  {% if usuario.papel == 'rh' %}
+  <div>
+    {{ botao_post(url_for('processo_encerrar', processo_id=p.id), 'Reabrir' if p.encerrado_em else 'Encerrar processo', 'secundario') }}
+    {{ botao_post(url_for('processo_excluir', processo_id=p.id), 'Excluir', 'perigo', 'Excluir este processo e todo o checklist?') }}
+  </div>
+  {% endif %}
+</div>
+<p class="suave">
+  {{ 'Início' if p.tipo == 'admissao' else 'Último dia' }}: {{ p.data_referencia|data_br }}
+  {% if p.cargo %} · {{ p.cargo }}{% endif %}
+  {% if p.gestor %} · Gestor: {{ p.gestor }}{% endif %}
+  {% if p.encerrado_em %} · <strong>Encerrado em {{ p.encerrado_em }}</strong>{% endif %}
+</p>
+{% if p.observacoes %}<p>{{ p.observacoes }}</p>{% endif %}
+<div style="display:flex;gap:8px;align-items:center;max-width:300px;margin-bottom:10px">
+  {{ barra(itens|selectattr('concluido_em')|list|length, itens|length) }}
+</div>
+{{ legenda() }}
+<div class="tabela"><table>
+  <tr><th>Prazo</th><th>Tarefa</th><th>Situação</th><th></th></tr>
+  {% for i in itens %}
+  <tr class="{{ i.prazo|situacao if not i.concluido_em }}">
+    <td>{{ data(i.prazo) }}</td>
+    <td class="{{ 'feito' if i.concluido_em }}">{{ i.descricao }}</td>
+    <td class="suave">{% if i.concluido_em %}Feito em {{ i.concluido_em }} por {{ i.concluido_por }}{% else %}Pendente{% endif %}</td>
+    <td>{{ botao_post(url_for('processo_item_alternar', processo_id=p.id, item_id=i.id), 'Desfazer' if i.concluido_em else 'Feito', 'pequeno secundario' if i.concluido_em else 'pequeno') }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+
+{% if usuario.papel == 'rh' %}
+<h2>Adicionar tarefa a este processo</h2>
+<form method="post" action="{{ url_for('processo_item_novo', processo_id=p.id) }}" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div><label for="descricao">Tarefa</label><input id="descricao" name="descricao" required></div>
+    <div><label for="prazo">Prazo</label><input id="prazo" name="prazo" type="date" required></div>
+  </div>
+  <div class="acoes"><button>Adicionar</button></div>
+</form>
+{% endif %}
+{% endblock %}

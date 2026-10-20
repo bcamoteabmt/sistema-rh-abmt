@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input with context %}
+{% block titulo %}{{ 'Editar' if p else 'Novo' }} procedimento{% endblock %}
+{% block conteudo %}
+<h1>{{ 'Editar' if p else 'Novo' }} procedimento</h1>
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div>
+      <label for="titulo">Título</label>
+      <input id="titulo" name="titulo" required value="{{ request.form.titulo or (p.titulo if p else '') }}">
+    </div>
+    <div>
+      <label for="categoria">Categoria</label>
+      <input id="categoria" name="categoria" list="categorias" required
+             value="{{ request.form.categoria or (p.categoria if p else '') }}" placeholder="Ex.: Folha de pagamento">
+      <datalist id="categorias">{% for c in categorias %}<option value="{{ c }}">{% endfor %}</datalist>
+    </div>
+  </div>
+  <label for="conteudo">Passo a passo</label>
+  <textarea id="conteudo" name="conteudo" required placeholder="1. Primeiro passo&#10;2. Segundo passo">{{ request.form.conteudo or (p.conteudo if p else '') }}</textarea>
+  <div class="acoes">
+    <button>Salvar</button>
+    <a class="btn secundario" href="{{ url_for('procedimento', proc_id=p.id) if p else url_for('procedimentos') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

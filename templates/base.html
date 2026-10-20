@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %} · RH ABMT</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if usuario %}
+  <header>
+    <div class="barra">
+      <a class="marca" href="{{ url_for('painel') }}">RH ABMT</a>
+      <nav>
+        {% set ep = request.endpoint or '' %}
+        <a href="{{ url_for('painel') }}" class="{{ 'ativo' if ep == 'painel' }}">Painel</a>
+        <a href="{{ url_for('prazos') }}" class="{{ 'ativo' if ep.startswith('prazo') }}">Prazos e lembretes</a>
+        <a href="{{ url_for('processos') }}" class="{{ 'ativo' if ep.startswith('processo') }}">Admissões e demissões</a>
+        <a href="{{ url_for('procedimentos') }}" class="{{ 'ativo' if ep.startswith('procedimento') }}">Procedimentos</a>
+        {% if usuario.papel == 'rh' %}
+        <a href="{{ url_for('modelos') }}" class="{{ 'ativo' if ep.startswith('modelo') }}">Checklists</a>
+        <a href="{{ url_for('usuarios') }}" class="{{ 'ativo' if ep.startswith('usuario') }}">Usuários</a>
+        {% endif %}
+      </nav>
+      <div class="conta">
+        <span>{{ usuario.nome }} ({{ PAPEIS[usuario.papel] }})</span>
+        <a href="{{ url_for('minha_senha') }}">Senha</a>
+        <form class="inline" method="post" action="{{ url_for('sair') }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="link">Sair</button>
+        </form>
+      </div>
+    </div>
+  </header>
+  {% endif %}
+  <main>
+    {% for categoria, msg in get_flashed_messages(with_categories=true) %}
+      <div class="flash {{ categoria }}">{{ msg }}</div>
+    {% endfor %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</body>
+</html>

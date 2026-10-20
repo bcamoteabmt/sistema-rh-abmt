@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import barra with context %}
+{% block titulo %}Admissões e demissões{% endblock %}
+{% macro tabela(lista, vazio) %}
+<div class="tabela"><table>
+  <tr><th>Colaborador</th><th>Tipo</th><th>Data</th><th>Gestor</th><th>Andamento</th><th>Próxima tarefa</th></tr>
+  {% for p in lista %}
+  <tr class="{{ p.proximo_prazo|situacao if not p.encerrado_em }}">
+    <td><a href="{{ url_for('processo', processo_id=p.id) }}">{{ p.colaborador }}</a>
+        {% if p.cargo %}<br><span class="suave">{{ p.cargo }}</span>{% endif %}</td>
+    <td><span class="selo">{{ TIPOS_PROCESSO[p.tipo] }}</span></td>
+    <td>{{ p.data_referencia|data_br }}</td>
+    <td>{{ p.gestor or '—' }}</td>
+    <td style="display:flex;gap:8px;align-items:center">{{ barra(p.feitos, p.total) }}</td>
+    <td>{{ p.proximo_prazo|data_br if p.proximo_prazo else '—' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="suave">{{ vazio }}</td></tr>
+  {% endfor %}
+</table></div>
+{% endmacro %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Admissões e demissões</h1>
+  {% if usuario.papel == 'rh' %}
+  <div>
+    <a class="btn" href="{{ url_for('processo_novo', tipo='admissao') }}">+ Nova admissão</a>
+    <a class="btn" href="{{ url_for('processo_novo', tipo='demissao') }}">+ Nova demissão</a>
+  </div>
+  {% endif %}
+</div>
+<h2>Em andamento</h2>
+{{ tabela(abertos, 'Nenhum processo em andamento.') }}
+{% if encerrados %}
+<h2>Encerrados</h2>
+{{ tabela(encerrados, '') }}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post, data, legenda with context %}
+{% block titulo %}Prazos e lembretes{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Prazos e lembretes</h1>
+  {% if usuario.papel == 'rh' %}<a class="btn" href="{{ url_for('prazo_form') }}">+ Novo prazo</a>{% endif %}
+</div>
+<p class="suave">Pagamentos, fechamentos e obrigações. Ao concluir um prazo recorrente, o próximo é criado automaticamente.</p>
+{{ legenda() }}
+<div class="tabela"><table>
+  <tr><th>Vencimento</th><th>O quê</th><th>Categoria</th><th>Repete</th><th>Responsável</th><th></th></tr>
+  {% for p in pendentes %}
+  <tr class="{{ p.vencimento|situacao }}">
+    <td>{{ data(p.vencimento) }}</td>
+    <td>{{ p.titulo }}{% if p.observacoes %}<br><span class="suave">{{ p.observacoes }}</span>{% endif %}</td>
+    <td><span class="selo">{{ p.categoria }}</span></td>
+    <td>{{ RECORRENCIAS[p.recorrencia] }}</td>
+    <td>{{ p.responsavel or '—' }}</td>
+    <td style="white-space:nowrap">
+      {{ botao_post(url_for('prazo_concluir', prazo_id=p.id), 'Concluir') }}
+      {% if usuario.papel == 'rh' %}
+        <a class="btn secundario pequeno" href="{{ url_for('prazo_form', prazo_id=p.id) }}">Editar</a>
+        {{ botao_post(url_for('prazo_excluir', prazo_id=p.id), 'Excluir', 'pequeno perigo', 'Excluir este prazo?') }}
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="suave">Nenhum prazo pendente.</td></tr>
+  {% endfor %}
+</table></div>
+
+{% if concluidos %}
+<h2>Concluídos recentemente</h2>
+<div class="tabela"><table>
+  <tr><th>Vencimento</th><th>O quê</th><th>Concluído em</th></tr>
+  {% for p in concluidos %}
+  <tr><td>{{ p.vencimento|data_br }}</td><td class="feito">{{ p.titulo }}</td><td>{{ p.concluido_em }}</td></tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

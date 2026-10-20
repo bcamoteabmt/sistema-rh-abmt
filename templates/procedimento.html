@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post with context %}
+{% block titulo %}{{ p.titulo }}{% endblock %}
+{% block conteudo %}
+<p><a href="{{ url_for('procedimentos') }}">← Procedimentos</a></p>
+<div class="cabecalho">
+  <h1>{{ p.titulo }}</h1>
+  {% if usuario.papel == 'rh' %}
+  <div>
+    <a class="btn secundario" href="{{ url_for('procedimento_form', proc_id=p.id) }}">Editar</a>
+    {{ botao_post(url_for('procedimento_excluir', proc_id=p.id), 'Excluir', 'perigo', 'Excluir este procedimento?') }}
+  </div>
+  {% endif %}
+</div>
+<p class="suave"><span class="selo">{{ p.categoria }}</span> Atualizado em {{ p.atualizado_em }} por {{ p.atualizado_por or '—' }}</p>
+<div class="card conteudo">{{ p.conteudo }}</div>
+{% endblock %}

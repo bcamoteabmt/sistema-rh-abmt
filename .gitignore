@@ -1,0 +1,6 @@
+# Banco de dados e configurações locais — nunca enviar ao GitHub
+*.db
+.env
+__pycache__/
+.venv/
+venv/

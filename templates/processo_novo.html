@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input with context %}
+{% block titulo %}Novo processo{% endblock %}
+{% block conteudo %}
+<h1>Nova {{ TIPOS_PROCESSO[tipo]|lower }}</h1>
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <input type="hidden" name="tipo" value="{{ tipo }}">
+  <div class="campos">
+    <div>
+      <label for="colaborador">Colaborador</label>
+      <input id="colaborador" name="colaborador" required value="{{ request.form.colaborador or '' }}">
+    </div>
+    <div>
+      <label for="cargo">Cargo / área</label>
+      <input id="cargo" name="cargo" value="{{ request.form.cargo or '' }}">
+    </div>
+    <div>
+      <label for="gestor">Gestor responsável</label>
+      <input id="gestor" name="gestor" value="{{ request.form.gestor or '' }}">
+    </div>
+    <div>
+      <label for="data_referencia">{{ 'Data de início' if tipo == 'admissao' else 'Último dia de trabalho' }}</label>
+      <input id="data_referencia" name="data_referencia" type="date" required value="{{ request.form.data_referencia or '' }}">
+    </div>
+  </div>
+  <label for="observacoes">Observações</label>
+  <input id="observacoes" name="observacoes" value="{{ request.form.observacoes or '' }}">
+  <p class="suave">O checklist será criado a partir do modelo de {{ TIPOS_PROCESSO[tipo]|lower }},
+    com os prazos calculados a partir da data informada. Não registre aqui dados sensíveis (CPF, saúde, salário).</p>
+  <div class="acoes">
+    <button>Criar processo</button>
+    <a class="btn secundario" href="{{ url_for('processos') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

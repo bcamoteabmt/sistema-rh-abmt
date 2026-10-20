@@ -1,0 +1,28 @@
+{% macro csrf_input() %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+
+{% macro botao_post(acao, texto, classe='pequeno', confirmar=None, voltar=None) %}
+<form class="inline" method="post" action="{{ acao }}"{% if confirmar %} onsubmit="return confirm('{{ confirmar }}')"{% endif %}>
+  {{ csrf_input() }}
+  {% if voltar %}<input type="hidden" name="voltar" value="{{ voltar }}">{% endif %}
+  <button class="{{ classe }}">{{ texto }}</button>
+</form>
+{% endmacro %}
+
+{% macro data(valor) %}
+<span class="data">{{ valor|data_br }}</span>
+{% if valor|fim_de_semana %}<br><span class="aviso">cai no fim de semana</span>{% endif %}
+{% endmacro %}
+
+{% macro legenda() %}
+<div class="legenda">
+  <span><i style="background:var(--atrasado)"></i>Atrasado</span>
+  <span><i style="background:var(--urgente)"></i>Até 3 dias</span>
+  <span><i style="background:var(--proximo)"></i>Até 7 dias</span>
+</div>
+{% endmacro %}
+
+{% macro barra(feitos, total) %}
+{% set pct = (100 * feitos / total)|round|int if total else 0 %}
+<div class="progresso" title="{{ feitos }} de {{ total }}"><span style="width: {{ pct }}%"></span></div>
+<span class="suave">{{ feitos }}/{{ total }}</span>
+{% endmacro %}

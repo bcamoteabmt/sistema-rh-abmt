@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input with context %}
+{% block titulo %}{{ 'Editar' if prazo else 'Novo' }} prazo{% endblock %}
+{% block conteudo %}
+<h1>{{ 'Editar' if prazo else 'Novo' }} prazo</h1>
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <label for="titulo">O quê</label>
+  <input id="titulo" name="titulo" required value="{{ request.form.titulo or (prazo.titulo if prazo else '') }}"
+         placeholder="Ex.: Pagamento do vale-transporte">
+  <div class="campos">
+    <div>
+      <label for="vencimento">Data de vencimento</label>
+      <input id="vencimento" name="vencimento" type="date" required
+             value="{{ request.form.vencimento or (prazo.vencimento if prazo else '') }}">
+    </div>
+    <div>
+      <label for="categoria">Categoria</label>
+      <select id="categoria" name="categoria">
+        {% for c in CATEGORIAS_PRAZO %}
+        <option {{ 'selected' if c == (request.form.categoria or (prazo.categoria if prazo else '')) }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="recorrencia">Repetição</label>
+      <select id="recorrencia" name="recorrencia">
+        {% for k, v in RECORRENCIAS.items() %}
+        <option value="{{ k }}" {{ 'selected' if k == (request.form.recorrencia or (prazo.recorrencia if prazo else 'mensal')) }}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="responsavel">Responsável</label>
+      <input id="responsavel" name="responsavel" value="{{ request.form.responsavel or (prazo.responsavel if prazo else '') or '' }}">
+    </div>
+  </div>
+  <label for="observacoes">Observações</label>
+  <input id="observacoes" name="observacoes" value="{{ request.form.observacoes or (prazo.observacoes if prazo else '') or '' }}">
+  <div class="acoes">
+    <button>Salvar</button>
+    <a class="btn secundario" href="{{ url_for('prazos') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

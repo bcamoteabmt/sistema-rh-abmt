@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Procedimentos{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Procedimentos internos</h1>
+  {% if usuario.papel == 'rh' %}<a class="btn" href="{{ url_for('procedimento_form') }}">+ Novo procedimento</a>{% endif %}
+</div>
+<form method="get" style="margin:16px 0;display:flex;gap:8px">
+  <input name="q" value="{{ busca }}" placeholder="Buscar por título, categoria ou conteúdo">
+  <button>Buscar</button>
+</form>
+<div class="tabela"><table>
+  <tr><th>Procedimento</th><th>Categoria</th><th>Atualizado</th></tr>
+  {% for p in procedimentos %}
+  <tr>
+    <td><a href="{{ url_for('procedimento', proc_id=p.id) }}">{{ p.titulo }}</a></td>
+    <td><span class="selo">{{ p.categoria }}</span></td>
+    <td class="suave">{{ p.atualizado_em }} · {{ p.atualizado_por or '' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3" class="suave">Nenhum procedimento encontrado.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

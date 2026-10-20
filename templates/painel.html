@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao_post, data, legenda, barra with context %}
+{% block titulo %}Painel{% endblock %}
+{% block conteudo %}
+<h1>Painel</h1>
+{{ legenda() }}
+
+<h2>Prazos e lembretes dos próximos 30 dias</h2>
+{% if prazos %}
+<div class="tabela"><table>
+  <tr><th>Vencimento</th><th>O quê</th><th>Categoria</th><th>Responsável</th><th></th></tr>
+  {% for p in prazos %}
+  <tr class="{{ p.vencimento|situacao }}">
+    <td>{{ data(p.vencimento) }}</td>
+    <td>{{ p.titulo }}</td>
+    <td><span class="selo">{{ p.categoria }}</span></td>
+    <td>{{ p.responsavel or '—' }}</td>
+    <td>{{ botao_post(url_for('prazo_concluir', prazo_id=p.id), 'Concluir', voltar=url_for('painel')) }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}<p class="suave">Nenhum prazo pendente nos próximos 30 dias.</p>{% endif %}
+
+<h2>Tarefas de admissão e demissão nos próximos 30 dias</h2>
+{% if itens %}
+<div class="tabela"><table>
+  <tr><th>Prazo</th><th>Tarefa</th><th>Colaborador</th><th></th></tr>
+  {% for i in itens %}
+  <tr class="{{ i.prazo|situacao }}">
+    <td>{{ data(i.prazo) }}</td>
+    <td>{{ i.descricao }}</td>
+    <td><a href="{{ url_for('processo', processo_id=i.processo_id) }}">{{ i.colaborador }}</a>
+        <span class="selo">{{ TIPOS_PROCESSO[i.tipo] }}</span></td>
+    <td>{{ botao_post(url_for('processo_item_alternar', processo_id=i.processo_id, item_id=i.id), 'Feito', voltar=url_for('painel')) }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}<p class="suave">Nenhuma tarefa pendente nos próximos 30 dias.</p>{% endif %}
+
+<h2>Processos em andamento</h2>
+{% if processos %}
+<div class="grade">
+  {% for p in processos %}
+  <a class="card" href="{{ url_for('processo', processo_id=p.id) }}" style="text-decoration:none;color:inherit">
+    <span class="selo">{{ TIPOS_PROCESSO[p.tipo] }}</span>
+    <strong style="display:block;margin:6px 0 2px">{{ p.colaborador }}</strong>
+    <span class="suave">{{ p.cargo or '' }}{% if p.gestor %} · Gestor: {{ p.gestor }}{% endif %}</span>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">{{ barra(p.feitos, p.total) }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}<p class="suave">Nenhum processo em andamento.</p>{% endif %}
+{% endblock %}
