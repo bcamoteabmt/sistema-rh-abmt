@@ -19,6 +19,11 @@ convenção coletiva de cada empresa.
 
 ## Como rodar no computador
 
+**Windows (mais fácil):** instale o Python (marcando "Add python.exe to PATH"), baixe o projeto em
+*Code → Download ZIP*, extraia a pasta e dê dois cliques em `iniciar.bat`. O navegador abre sozinho.
+
+**Pelo terminal:**
+
 Requer Python 3.10 ou superior ([python.org](https://www.python.org/downloads/)).
 
 ```bash
