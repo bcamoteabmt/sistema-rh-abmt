@@ -1,33 +1,53 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf_input with context %}
-{% block titulo %}Novo processo{% endblock %}
+{% from "_macros.html" import csrf_input, opcoes_select with context %}
+{% block titulo %}Nova {{ TIPOS_PROCESSO[tipo]|lower }}{% endblock %}
 {% block conteudo %}
 <h1>Nova {{ TIPOS_PROCESSO[tipo]|lower }}</h1>
 <form method="post" class="card">
   {{ csrf_input() }}
   <input type="hidden" name="tipo" value="{{ tipo }}">
+  {% if tipo == 'admissao' %}
   <div class="campos">
-    <div>
-      <label for="colaborador">Colaborador</label>
-      <input id="colaborador" name="colaborador" required value="{{ request.form.colaborador or '' }}">
-    </div>
-    <div>
-      <label for="cargo">Cargo / área</label>
-      <input id="cargo" name="cargo" value="{{ request.form.cargo or '' }}">
-    </div>
-    <div>
-      <label for="gestor">Gestor responsável</label>
-      <input id="gestor" name="gestor" value="{{ request.form.gestor or '' }}">
-    </div>
-    <div>
-      <label for="data_referencia">{{ 'Data de início' if tipo == 'admissao' else 'Último dia de trabalho' }}</label>
-      <input id="data_referencia" name="data_referencia" type="date" required value="{{ request.form.data_referencia or '' }}">
-    </div>
+    <div><label for="colaborador">Nome do colaborador</label>
+      <input id="colaborador" name="colaborador" required value="{{ request.form.colaborador or '' }}"></div>
+    <div><label for="empresa_id">Empresa</label>
+      <select id="empresa_id" name="empresa_id" required>{{ opcoes_select(empresas, request.form.empresa_id or empresa_atual) }}</select></div>
+    <div><label for="area_id">Área</label>
+      <select id="area_id" name="area_id">{{ opcoes_select(areas, request.form.area_id) }}</select></div>
+    <div><label for="cargo_id">Cargo</label>
+      <select id="cargo_id" name="cargo_id">{{ opcoes_select(cargos, request.form.cargo_id) }}</select></div>
+    <div><label for="gestor_id">Gestor responsável</label>
+      <select id="gestor_id" name="gestor_id">{{ opcoes_select(gestores, request.form.gestor_id) }}</select></div>
+    <div><label for="data_referencia">Data de início</label>
+      <input id="data_referencia" name="data_referencia" type="date" required value="{{ request.form.data_referencia or '' }}"></div>
   </div>
+  {% if not areas or not cargos or not gestores %}
+  <p class="aviso">Faltam opções nas listas? Cadastre
+    {% if not areas %}<a href="{{ url_for('cadastro', tabela='areas') }}">áreas</a> {% endif %}
+    {% if not cargos %}<a href="{{ url_for('cadastro', tabela='cargos') }}">cargos</a> {% endif %}
+    {% if not gestores %}<a href="{{ url_for('funcionarios') }}">gestores</a> (funcionário marcado como "É gestor"){% endif %}
+    em Cadastros.</p>
+  {% endif %}
+  <p class="suave">O colaborador será incluído automaticamente no cadastro de funcionários.</p>
+  {% else %}
+  <div class="campos">
+    <div><label for="funcionario_id">Funcionário</label>
+      <select id="funcionario_id" name="funcionario_id" required>
+        <option value="">— selecione —</option>
+        {% for f in funcionarios %}
+        <option value="{{ f.id }}" {{ 'selected' if f.id|string == request.form.funcionario_id }}>{{ f.nome }}{% if f.cargo %} — {{ f.cargo }}{% endif %}{% if f.empresa %} ({{ f.empresa }}){% endif %}</option>
+        {% endfor %}
+      </select></div>
+    <div><label for="data_referencia">Último dia de trabalho</label>
+      <input id="data_referencia" name="data_referencia" type="date" required value="{{ request.form.data_referencia or '' }}"></div>
+  </div>
+  {% if not funcionarios %}<p class="aviso">Nenhum funcionário ativo cadastrado{% if empresa_atual %} nesta empresa{% endif %}.
+    <a href="{{ url_for('funcionario_form') }}">Cadastrar funcionário</a></p>{% endif %}
+  <p class="suave">Empresa, área, cargo e gestor vêm do cadastro do funcionário. Ao encerrar o processo, ele é marcado como desligado.</p>
+  {% endif %}
   <label for="observacoes">Observações</label>
   <input id="observacoes" name="observacoes" value="{{ request.form.observacoes or '' }}">
-  <p class="suave">O checklist será criado a partir do modelo de {{ TIPOS_PROCESSO[tipo]|lower }},
-    com os prazos calculados a partir da data informada. Não registre aqui dados sensíveis (CPF, saúde, salário).</p>
+  <p class="suave">O checklist será criado a partir do modelo de {{ TIPOS_PROCESSO[tipo]|lower }}. Não registre dados sensíveis (CPF, saúde, salário).</p>
   <div class="acoes">
     <button>Criar processo</button>
     <a class="btn secundario" href="{{ url_for('processos') }}">Cancelar</a>

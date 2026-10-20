@@ -26,3 +26,17 @@
 <div class="progresso" title="{{ feitos }} de {{ total }}"><span style="width: {{ pct }}%"></span></div>
 <span class="suave">{{ feitos }}/{{ total }}</span>
 {% endmacro %}
+
+{% macro abas_cadastro(atual) %}
+<div class="abas">
+  <a href="{{ url_for('funcionarios') }}" class="{{ 'ativo' if atual == 'funcionarios' }}">Funcionários e gestores</a>
+  {% for chave, nome in CADASTROS.items() %}
+  <a href="{{ url_for('cadastro', tabela=chave) }}" class="{{ 'ativo' if atual == chave }}">{{ nome }}</a>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro opcoes_select(lista, selecionado, vazio='— selecione —') %}
+<option value="">{{ vazio }}</option>
+{% for o in lista %}<option value="{{ o.id }}" {{ 'selected' if o.id|string == selecionado|string }}>{{ o.nome }}</option>{% endfor %}
+{% endmacro %}

@@ -17,11 +17,21 @@
         <a href="{{ url_for('prazos') }}" class="{{ 'ativo' if ep.startswith('prazo') }}">Prazos e lembretes</a>
         <a href="{{ url_for('processos') }}" class="{{ 'ativo' if ep.startswith('processo') }}">Admissões e demissões</a>
         <a href="{{ url_for('procedimentos') }}" class="{{ 'ativo' if ep.startswith('procedimento') }}">Procedimentos</a>
+        <a href="{{ url_for('funcionarios') }}" class="{{ 'ativo' if ep.startswith('funcionario') or ep.startswith('cadastro') }}">Cadastros</a>
         {% if usuario.papel == 'rh' %}
         <a href="{{ url_for('modelos') }}" class="{{ 'ativo' if ep.startswith('modelo') }}">Checklists</a>
         <a href="{{ url_for('usuarios') }}" class="{{ 'ativo' if ep.startswith('usuario') }}">Usuários</a>
         {% endif %}
       </nav>
+      <form class="seletor-empresa" method="post" action="{{ url_for('escolher_empresa') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="voltar" value="{{ request.full_path }}">
+        <select name="empresa_id" onchange="this.form.submit()" aria-label="Empresa">
+          <option value="">Todas as empresas</option>
+          {% for e in empresas %}<option value="{{ e.id }}" {{ 'selected' if e.id == empresa_atual }}>{{ e.nome }}</option>{% endfor %}
+        </select>
+        <noscript><button class="pequeno">OK</button></noscript>
+      </form>
       <div class="conta">
         <span>{{ usuario.nome }} ({{ PAPEIS[usuario.papel] }})</span>
         <a href="{{ url_for('minha_senha') }}">Senha</a>

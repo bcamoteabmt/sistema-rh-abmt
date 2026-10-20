@@ -31,6 +31,36 @@ CREATE TABLE IF NOT EXISTS usuarios (
     papel TEXT NOT NULL CHECK (papel IN ('rh', 'gestor')),
     ativo INTEGER NOT NULL DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS empresas (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    cnpj TEXT NOT NULL UNIQUE,
+    ativo INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS areas (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL UNIQUE,
+    ativo INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS cargos (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL UNIQUE,
+    ativo INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS funcionarios (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    matricula TEXT,
+    email TEXT,
+    empresa_id INTEGER REFERENCES empresas(id),
+    area_id INTEGER REFERENCES areas(id),
+    cargo_id INTEGER REFERENCES cargos(id),
+    gestor_id INTEGER REFERENCES funcionarios(id),
+    e_gestor INTEGER NOT NULL DEFAULT 0,
+    data_admissao TEXT,
+    data_desligamento TEXT,
+    ativo INTEGER NOT NULL DEFAULT 1
+);
 CREATE TABLE IF NOT EXISTS prazos (
     id INTEGER PRIMARY KEY,
     titulo TEXT NOT NULL,
@@ -77,6 +107,20 @@ CREATE TABLE IF NOT EXISTS processo_itens (
     concluido_por TEXT
 );
 """
+
+# Colunas adicionadas depois da primeira versão — aplicadas em bancos já existentes.
+MIGRACOES = {
+    "prazos": [("empresa_id", "INTEGER REFERENCES empresas(id)")],
+    "processos": [("empresa_id", "INTEGER REFERENCES empresas(id)"),
+                  ("funcionario_id", "INTEGER REFERENCES funcionarios(id)"),
+                  ("area", "TEXT")],
+}
+
+EMPRESAS_INICIAIS = [
+    ("ABMT", "17.820.873/0001-43"),
+    ("AEB", "60.844.490/0001-34"),
+    ("Assessoria ABMT", "60.758.881/0001-36"),
+]
 
 # Exemplos iniciais — ajuste conforme a convenção coletiva e a orientação da contabilidade.
 PRAZOS_INICIAIS = [
@@ -146,6 +190,13 @@ def close_db(_exc):
 def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript(SCHEMA)
+    for tabela, colunas in MIGRACOES.items():
+        existentes = {r[1] for r in db.execute(f"PRAGMA table_info({tabela})")}
+        for coluna, tipo in colunas:
+            if coluna not in existentes:
+                db.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
+    if db.execute("SELECT COUNT(*) FROM empresas").fetchone()[0] == 0:
+        db.executemany("INSERT INTO empresas (nome, cnpj) VALUES (?, ?)", EMPRESAS_INICIAIS)
     if db.execute("SELECT COUNT(*) FROM prazos").fetchone()[0] == 0:
         hoje = date.today()
         for titulo, categoria, dia, rec in PRAZOS_INICIAIS:
@@ -254,9 +305,56 @@ def carregar_usuario():
 def contexto_global():
     if "csrf" not in session:
         session["csrf"] = secrets.token_hex(16)
-    return {"csrf": session["csrf"], "usuario": g.get("usuario"), "PAPEIS": PAPEIS,
-            "TIPOS_PROCESSO": TIPOS_PROCESSO, "RECORRENCIAS": RECORRENCIAS,
-            "CATEGORIAS_PRAZO": CATEGORIAS_PRAZO}
+    contexto = {"csrf": session["csrf"], "usuario": g.get("usuario"), "PAPEIS": PAPEIS,
+                "TIPOS_PROCESSO": TIPOS_PROCESSO, "RECORRENCIAS": RECORRENCIAS,
+                "CATEGORIAS_PRAZO": CATEGORIAS_PRAZO}
+    if g.get("usuario"):
+        contexto["empresas"] = opcoes("empresas")
+        contexto["empresa_atual"] = empresa_atual()
+    return contexto
+
+
+def opcoes(tabela):
+    """Registros ativos de empresas, áreas ou cargos, para listas de seleção."""
+    return get_db().execute(f"SELECT * FROM {tabela} WHERE ativo = 1 ORDER BY nome").fetchall()
+
+
+def gestores():
+    return get_db().execute(
+        "SELECT * FROM funcionarios WHERE e_gestor = 1 AND ativo = 1 ORDER BY nome").fetchall()
+
+
+def empresa_atual():
+    """Empresa escolhida no seletor do topo; None significa todas."""
+    empresa_id = session.get("empresa_id")
+    if empresa_id and get_db().execute("SELECT 1 FROM empresas WHERE id = ? AND ativo = 1",
+                                       (empresa_id,)).fetchone():
+        return empresa_id
+    return None
+
+
+def id_ou_none(valor):
+    try:
+        return int(valor) if valor else None
+    except ValueError:
+        return None
+
+
+def cnpj_valido(cnpj):
+    d = [int(c) for c in cnpj if c.isdigit()]
+    if len(d) != 14 or len(set(d)) == 1:
+        return False
+    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+
+    def digito(numeros, w):
+        resto = sum(a * b for a, b in zip(numeros, w)) % 11
+        return 0 if resto < 2 else 11 - resto
+    return d[12] == digito(d[:12], pesos) and d[13] == digito(d[:13], [6] + pesos)
+
+
+def formatar_cnpj(cnpj):
+    d = "".join(c for c in cnpj if c.isdigit())
+    return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
 
 
 def login_obrigatorio(view):
@@ -318,6 +416,13 @@ def sair():
     return redirect(url_for("login"))
 
 
+@app.route("/empresa", methods=["POST"])
+@login_obrigatorio
+def escolher_empresa():
+    session["empresa_id"] = id_ou_none(request.form.get("empresa_id"))
+    return redirect(request.form.get("voltar") or url_for("painel"))
+
+
 # ---------------------------------------------------------------- painel
 
 @app.route("/")
@@ -325,15 +430,29 @@ def sair():
 def painel():
     db = get_db()
     limite = (date.today() + timedelta(days=30)).isoformat()
+    filtro, params = filtro_empresa("pz", aceita_todas=True)
     prazos = db.execute(
-        "SELECT * FROM prazos WHERE concluido_em IS NULL AND vencimento <= ? ORDER BY vencimento",
-        (limite,)).fetchall()
+        "SELECT pz.*, e.nome AS empresa FROM prazos pz LEFT JOIN empresas e ON e.id = pz.empresa_id "
+        f"WHERE pz.concluido_em IS NULL AND pz.vencimento <= ? {filtro} ORDER BY pz.vencimento",
+        (limite, *params)).fetchall()
+    filtro, params = filtro_empresa("p")
     itens = db.execute(
         "SELECT i.*, p.colaborador, p.tipo FROM processo_itens i JOIN processos p ON p.id = i.processo_id "
-        "WHERE i.concluido_em IS NULL AND p.encerrado_em IS NULL AND i.prazo <= ? ORDER BY i.prazo",
-        (limite,)).fetchall()
+        f"WHERE i.concluido_em IS NULL AND p.encerrado_em IS NULL AND i.prazo <= ? {filtro} ORDER BY i.prazo",
+        (limite, *params)).fetchall()
     processos = listar_processos(abertos=True)
     return render_template("painel.html", prazos=prazos, itens=itens, processos=processos)
+
+
+def filtro_empresa(alias, aceita_todas=False):
+    """Trecho SQL que limita a consulta à empresa escolhida no topo da tela.
+    aceita_todas: inclui também os registros sem empresa (valem para todas)."""
+    empresa_id = empresa_atual()
+    if not empresa_id:
+        return "", ()
+    if aceita_todas:
+        return f"AND ({alias}.empresa_id IS NULL OR {alias}.empresa_id = ?)", (empresa_id,)
+    return f"AND {alias}.empresa_id = ?", (empresa_id,)
 
 
 # ---------------------------------------------------------------- prazos e lembretes
@@ -342,10 +461,13 @@ def painel():
 @login_obrigatorio
 def prazos():
     db = get_db()
+    filtro, params = filtro_empresa("pz", aceita_todas=True)
+    base = "SELECT pz.*, e.nome AS empresa FROM prazos pz LEFT JOIN empresas e ON e.id = pz.empresa_id "
     pendentes = db.execute(
-        "SELECT * FROM prazos WHERE concluido_em IS NULL ORDER BY vencimento").fetchall()
+        base + f"WHERE pz.concluido_em IS NULL {filtro} ORDER BY pz.vencimento", params).fetchall()
     concluidos = db.execute(
-        "SELECT * FROM prazos WHERE concluido_em IS NOT NULL ORDER BY concluido_em DESC LIMIT 20").fetchall()
+        base + f"WHERE pz.concluido_em IS NOT NULL {filtro} ORDER BY pz.concluido_em DESC LIMIT 20",
+        params).fetchall()
     return render_template("prazos.html", pendentes=pendentes, concluidos=concluidos)
 
 
@@ -360,17 +482,18 @@ def prazo_form(prazo_id=None):
     if request.method == "POST":
         f = request.form
         dados = (f.get("titulo", "").strip(), f.get("categoria"), f.get("vencimento"),
-                 f.get("recorrencia"), f.get("responsavel", "").strip(), f.get("observacoes", "").strip())
+                 f.get("recorrencia"), f.get("responsavel", "").strip(), f.get("observacoes", "").strip(),
+                 id_ou_none(f.get("empresa_id")))
         if not dados[0] or not parse_data(dados[2]) or dados[1] not in CATEGORIAS_PRAZO \
                 or dados[3] not in RECORRENCIAS:
             flash("Preencha título, categoria, data e recorrência.", "erro")
         else:
             if prazo:
                 db.execute("UPDATE prazos SET titulo=?, categoria=?, vencimento=?, recorrencia=?, "
-                           "responsavel=?, observacoes=? WHERE id=?", (*dados, prazo_id))
+                           "responsavel=?, observacoes=?, empresa_id=? WHERE id=?", (*dados, prazo_id))
             else:
                 db.execute("INSERT INTO prazos (titulo, categoria, vencimento, recorrencia, responsavel, "
-                           "observacoes) VALUES (?, ?, ?, ?, ?, ?)", dados)
+                           "observacoes, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)", dados)
             db.commit()
             flash("Prazo salvo.", "ok")
             return redirect(url_for("prazos"))
@@ -385,9 +508,10 @@ def prazo_concluir(prazo_id):
     db.execute("UPDATE prazos SET concluido_em = ? WHERE id = ?", (agora(), prazo_id))
     proxima = proxima_ocorrencia(parse_data(prazo["vencimento"]), prazo["recorrencia"])
     if proxima:
-        db.execute("INSERT INTO prazos (titulo, categoria, vencimento, recorrencia, responsavel, observacoes) "
-                   "VALUES (?, ?, ?, ?, ?, ?)", (prazo["titulo"], prazo["categoria"], proxima.isoformat(),
-                                                 prazo["recorrencia"], prazo["responsavel"], prazo["observacoes"]))
+        db.execute("INSERT INTO prazos (titulo, categoria, vencimento, recorrencia, responsavel, observacoes, "
+                   "empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (prazo["titulo"], prazo["categoria"], proxima.isoformat(), prazo["recorrencia"],
+                    prazo["responsavel"], prazo["observacoes"], prazo["empresa_id"]))
         flash(f"Concluído. Próxima ocorrência criada para {data_br(proxima)}.", "ok")
     else:
         flash("Prazo concluído.", "ok")
@@ -469,12 +593,22 @@ def procedimento_excluir(proc_id):
 # ---------------------------------------------------------------- processos de admissão e demissão
 
 def listar_processos(abertos):
-    filtro = "IS NULL" if abertos else "IS NOT NULL"
+    situacao_sql = "IS NULL" if abertos else "IS NOT NULL"
+    filtro, params = filtro_empresa("p")
     return get_db().execute(
-        "SELECT p.*, COUNT(i.id) AS total, COUNT(i.concluido_em) AS feitos, "
+        "SELECT p.*, e.nome AS empresa, COUNT(i.id) AS total, COUNT(i.concluido_em) AS feitos, "
         "MIN(CASE WHEN i.concluido_em IS NULL THEN i.prazo END) AS proximo_prazo "
-        f"FROM processos p LEFT JOIN processo_itens i ON i.processo_id = p.id WHERE p.encerrado_em {filtro} "
-        "GROUP BY p.id ORDER BY p.data_referencia DESC").fetchall()
+        "FROM processos p LEFT JOIN processo_itens i ON i.processo_id = p.id "
+        "LEFT JOIN empresas e ON e.id = p.empresa_id "
+        f"WHERE p.encerrado_em {situacao_sql} {filtro} "
+        "GROUP BY p.id ORDER BY p.data_referencia DESC", params).fetchall()
+
+
+def nome_por_id(tabela, registro_id):
+    if not registro_id:
+        return ""
+    row = get_db().execute(f"SELECT nome FROM {tabela} WHERE id = ?", (registro_id,)).fetchone()
+    return row["nome"] if row else ""
 
 
 @app.route("/processos")
@@ -486,34 +620,74 @@ def processos():
 @app.route("/processos/novo", methods=["GET", "POST"])
 @somente_rh
 def processo_novo():
+    db = get_db()
+    tipo = request.values.get("tipo", "admissao")
+    if tipo not in TIPOS_PROCESSO:
+        abort(400)
     if request.method == "POST":
         f = request.form
-        tipo, colaborador, ref = f.get("tipo"), f.get("colaborador", "").strip(), parse_data(f.get("data_referencia"))
-        if tipo not in TIPOS_PROCESSO or not colaborador or not ref:
-            flash("Preencha tipo, colaborador e data.", "erro")
+        ref = parse_data(f.get("data_referencia"))
+        if tipo == "admissao":
+            empresa_id, area_id, cargo_id, gestor_id = (
+                id_ou_none(f.get(k)) for k in ("empresa_id", "area_id", "cargo_id", "gestor_id"))
+            colaborador = f.get("colaborador", "").strip()
+            funcionario = None
+            if not colaborador or not empresa_id or not ref:
+                flash("Preencha empresa, nome do colaborador e data de início.", "erro")
+                return render_form_processo(tipo)
         else:
-            db = get_db()
-            cur = db.execute(
-                "INSERT INTO processos (tipo, colaborador, cargo, gestor, data_referencia, observacoes, criado_em) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (tipo, colaborador, f.get("cargo", "").strip(), f.get("gestor", "").strip(), ref.isoformat(),
-                 f.get("observacoes", "").strip(), agora()))
-            modelo = db.execute("SELECT * FROM modelo_itens WHERE tipo = ? ORDER BY ordem", (tipo,)).fetchall()
-            for item in modelo:
-                db.execute("INSERT INTO processo_itens (processo_id, ordem, descricao, prazo) VALUES (?, ?, ?, ?)",
-                           (cur.lastrowid, item["ordem"], item["descricao"],
-                            (ref + timedelta(days=item["dias_relativos"])).isoformat()))
-            db.commit()
-            flash("Processo criado com o checklist do modelo.", "ok")
-            return redirect(url_for("processo", processo_id=cur.lastrowid))
-    return render_template("processo_novo.html", tipo=request.args.get("tipo", "admissao"))
+            funcionario = db.execute("SELECT * FROM funcionarios WHERE id = ? AND ativo = 1",
+                                     (id_ou_none(f.get("funcionario_id")),)).fetchone()
+            if not funcionario or not ref:
+                flash("Escolha o funcionário e informe o último dia de trabalho.", "erro")
+                return render_form_processo(tipo)
+            colaborador = funcionario["nome"]
+            empresa_id, area_id, cargo_id, gestor_id = (
+                funcionario[k] for k in ("empresa_id", "area_id", "cargo_id", "gestor_id"))
+
+        if tipo == "admissao":
+            funcionario_id = db.execute(
+                "INSERT INTO funcionarios (nome, empresa_id, area_id, cargo_id, gestor_id, data_admissao) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (colaborador, empresa_id, area_id, cargo_id, gestor_id, ref.isoformat())).lastrowid
+        else:
+            funcionario_id = funcionario["id"]
+            db.execute("UPDATE funcionarios SET data_desligamento = ? WHERE id = ?",
+                       (ref.isoformat(), funcionario_id))
+        cur = db.execute(
+            "INSERT INTO processos (tipo, colaborador, cargo, gestor, area, empresa_id, funcionario_id, "
+            "data_referencia, observacoes, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (tipo, colaborador, nome_por_id("cargos", cargo_id), nome_por_id("funcionarios", gestor_id),
+             nome_por_id("areas", area_id), empresa_id, funcionario_id, ref.isoformat(),
+             f.get("observacoes", "").strip(), agora()))
+        modelo = db.execute("SELECT * FROM modelo_itens WHERE tipo = ? ORDER BY ordem", (tipo,)).fetchall()
+        for item in modelo:
+            db.execute("INSERT INTO processo_itens (processo_id, ordem, descricao, prazo) VALUES (?, ?, ?, ?)",
+                       (cur.lastrowid, item["ordem"], item["descricao"],
+                        (ref + timedelta(days=item["dias_relativos"])).isoformat()))
+        db.commit()
+        flash("Processo criado com o checklist do modelo.", "ok")
+        return redirect(url_for("processo", processo_id=cur.lastrowid))
+    return render_form_processo(tipo)
+
+
+def render_form_processo(tipo):
+    filtro, params = filtro_empresa("f")
+    funcionarios = get_db().execute(
+        "SELECT f.id, f.nome, e.nome AS empresa, c.nome AS cargo FROM funcionarios f "
+        "LEFT JOIN empresas e ON e.id = f.empresa_id LEFT JOIN cargos c ON c.id = f.cargo_id "
+        f"WHERE f.ativo = 1 {filtro} ORDER BY f.nome", params).fetchall()
+    return render_template("processo_novo.html", tipo=tipo, areas=opcoes("areas"), cargos=opcoes("cargos"),
+                           gestores=gestores(), funcionarios=funcionarios)
 
 
 @app.route("/processos/<int:processo_id>")
 @login_obrigatorio
 def processo(processo_id):
     db = get_db()
-    p = db.execute("SELECT * FROM processos WHERE id = ?", (processo_id,)).fetchone() or abort(404)
+    p = db.execute("SELECT p.*, e.nome AS empresa, e.cnpj FROM processos p "
+                   "LEFT JOIN empresas e ON e.id = p.empresa_id WHERE p.id = ?",
+                   (processo_id,)).fetchone() or abort(404)
     itens = db.execute("SELECT * FROM processo_itens WHERE processo_id = ? ORDER BY prazo, ordem",
                        (processo_id,)).fetchall()
     return render_template("processo.html", p=p, itens=itens)
@@ -555,6 +729,10 @@ def processo_encerrar(processo_id):
     p = db.execute("SELECT * FROM processos WHERE id = ?", (processo_id,)).fetchone() or abort(404)
     db.execute("UPDATE processos SET encerrado_em = ? WHERE id = ?",
                (None if p["encerrado_em"] else agora(), processo_id))
+    if p["tipo"] == "demissao" and p["funcionario_id"]:
+        # Encerrar a demissão desliga o funcionário do cadastro; reabrir desfaz.
+        db.execute("UPDATE funcionarios SET ativo = ? WHERE id = ?",
+                   (1 if p["encerrado_em"] else 0, p["funcionario_id"]))
     db.commit()
     flash("Processo reaberto." if p["encerrado_em"] else "Processo encerrado.", "ok")
     return redirect(url_for("processo", processo_id=processo_id))
@@ -602,6 +780,143 @@ def modelo_excluir(item_id):
     db.execute("DELETE FROM modelo_itens WHERE id = ?", (item_id,))
     db.commit()
     return redirect(url_for("modelos"))
+
+
+# ---------------------------------------------------------------- cadastros básicos
+
+CADASTROS = {"empresas": "Empresas", "areas": "Áreas", "cargos": "Cargos"}
+
+
+def ler_cadastro(tabela, form):
+    """Valida o formulário de empresa/área/cargo; devolve (dados, erro)."""
+    nome = form.get("nome", "").strip()
+    if not nome:
+        return None, "Informe o nome."
+    if tabela != "empresas":
+        return {"nome": nome}, None
+    cnpj = form.get("cnpj", "")
+    if not cnpj_valido(cnpj):
+        return None, "CNPJ inválido. Confira os números."
+    return {"nome": nome, "cnpj": formatar_cnpj(cnpj)}, None
+
+
+@app.route("/cadastros/<tabela>", methods=["GET", "POST"])
+@login_obrigatorio
+def cadastro(tabela):
+    if tabela not in CADASTROS:
+        abort(404)
+    db = get_db()
+    if request.method == "POST":
+        if g.usuario["papel"] != "rh":
+            abort(403)
+        dados, erro = ler_cadastro(tabela, request.form)
+        if erro:
+            flash(erro, "erro")
+        else:
+            try:
+                db.execute(f"INSERT INTO {tabela} ({', '.join(dados)}) VALUES ({', '.join('?' * len(dados))})",
+                           tuple(dados.values()))
+                db.commit()
+                flash("Cadastro incluído.", "ok")
+            except sqlite3.IntegrityError:
+                flash("Já existe um cadastro com esse nome/CNPJ.", "erro")
+        return redirect(url_for("cadastro", tabela=tabela))
+    contagem = {"empresas": "empresa_id", "areas": "area_id", "cargos": "cargo_id"}[tabela]
+    lista = db.execute(
+        f"SELECT t.*, (SELECT COUNT(*) FROM funcionarios f WHERE f.{contagem} = t.id AND f.ativo = 1) AS ativos "
+        f"FROM {tabela} t ORDER BY t.ativo DESC, t.nome").fetchall()
+    return render_template("cadastro.html", tabela=tabela, titulo=CADASTROS[tabela], lista=lista,
+                           CADASTROS=CADASTROS)
+
+
+@app.route("/cadastros/<tabela>/<int:registro_id>/editar", methods=["GET", "POST"])
+@somente_rh
+def cadastro_editar(tabela, registro_id):
+    if tabela not in CADASTROS:
+        abort(404)
+    db = get_db()
+    registro = db.execute(f"SELECT * FROM {tabela} WHERE id = ?", (registro_id,)).fetchone() or abort(404)
+    if request.method == "POST":
+        dados, erro = ler_cadastro(tabela, request.form)
+        if erro:
+            flash(erro, "erro")
+        else:
+            try:
+                db.execute(f"UPDATE {tabela} SET {', '.join(k + ' = ?' for k in dados)} WHERE id = ?",
+                           (*dados.values(), registro_id))
+                db.commit()
+                flash("Cadastro atualizado.", "ok")
+                return redirect(url_for("cadastro", tabela=tabela))
+            except sqlite3.IntegrityError:
+                flash("Já existe um cadastro com esse nome/CNPJ.", "erro")
+    return render_template("cadastro_editar.html", tabela=tabela, titulo=CADASTROS[tabela], r=registro,
+                           CADASTROS=CADASTROS)
+
+
+@app.route("/cadastros/<tabela>/<int:registro_id>/alternar", methods=["POST"])
+@somente_rh
+def cadastro_alternar(tabela, registro_id):
+    if tabela not in CADASTROS:
+        abort(404)
+    db = get_db()
+    db.execute(f"UPDATE {tabela} SET ativo = 1 - ativo WHERE id = ?", (registro_id,))
+    db.commit()
+    return redirect(url_for("cadastro", tabela=tabela))
+
+
+@app.route("/funcionarios")
+@login_obrigatorio
+def funcionarios():
+    mostrar = request.args.get("mostrar", "ativos")
+    filtro, params = filtro_empresa("f")
+    situacao_sql = {"ativos": "AND f.ativo = 1", "desligados": "AND f.ativo = 0"}.get(mostrar, "")
+    lista = get_db().execute(
+        "SELECT f.*, e.nome AS empresa, a.nome AS area, c.nome AS cargo, gs.nome AS gestor "
+        "FROM funcionarios f LEFT JOIN empresas e ON e.id = f.empresa_id LEFT JOIN areas a ON a.id = f.area_id "
+        "LEFT JOIN cargos c ON c.id = f.cargo_id LEFT JOIN funcionarios gs ON gs.id = f.gestor_id "
+        f"WHERE 1 = 1 {situacao_sql} {filtro} ORDER BY f.nome", params).fetchall()
+    return render_template("funcionarios.html", lista=lista, mostrar=mostrar, CADASTROS=CADASTROS)
+
+
+@app.route("/funcionarios/novo", methods=["GET", "POST"])
+@app.route("/funcionarios/<int:funcionario_id>/editar", methods=["GET", "POST"])
+@somente_rh
+def funcionario_form(funcionario_id=None):
+    db = get_db()
+    func = None
+    if funcionario_id:
+        func = db.execute("SELECT * FROM funcionarios WHERE id = ?", (funcionario_id,)).fetchone() or abort(404)
+    if request.method == "POST":
+        f = request.form
+        dados = {
+            "nome": f.get("nome", "").strip(),
+            "matricula": f.get("matricula", "").strip(),
+            "email": f.get("email", "").strip(),
+            "empresa_id": id_ou_none(f.get("empresa_id")),
+            "area_id": id_ou_none(f.get("area_id")),
+            "cargo_id": id_ou_none(f.get("cargo_id")),
+            "gestor_id": id_ou_none(f.get("gestor_id")),
+            "e_gestor": 1 if f.get("e_gestor") else 0,
+            "data_admissao": f.get("data_admissao") if parse_data(f.get("data_admissao")) else None,
+            "ativo": 0 if f.get("desligado") else 1,
+        }
+        if not dados["nome"] or not dados["empresa_id"]:
+            flash("Informe o nome e a empresa.", "erro")
+        elif funcionario_id and dados["gestor_id"] == funcionario_id:
+            flash("O funcionário não pode ser gestor de si mesmo.", "erro")
+        else:
+            if func:
+                db.execute(f"UPDATE funcionarios SET {', '.join(k + ' = ?' for k in dados)} WHERE id = ?",
+                           (*dados.values(), funcionario_id))
+            else:
+                db.execute(f"INSERT INTO funcionarios ({', '.join(dados)}) "
+                           f"VALUES ({', '.join('?' * len(dados))})", tuple(dados.values()))
+            db.commit()
+            flash("Funcionário salvo.", "ok")
+            return redirect(url_for("funcionarios"))
+    lista_gestores = [x for x in gestores() if x["id"] != funcionario_id]
+    return render_template("funcionario_form.html", func=func, areas=opcoes("areas"), cargos=opcoes("cargos"),
+                           gestores=lista_gestores, CADASTROS=CADASTROS)
 
 
 # ---------------------------------------------------------------- usuários

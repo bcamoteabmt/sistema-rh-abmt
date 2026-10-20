@@ -14,6 +14,8 @@
 </div>
 <p class="suave">
   {{ 'Início' if p.tipo == 'admissao' else 'Último dia' }}: {{ p.data_referencia|data_br }}
+  {% if p.empresa %} · {{ p.empresa }} ({{ p.cnpj }}){% endif %}
+  {% if p.area %} · {{ p.area }}{% endif %}
   {% if p.cargo %} · {{ p.cargo }}{% endif %}
   {% if p.gestor %} · Gestor: {{ p.gestor }}{% endif %}
   {% if p.encerrado_em %} · <strong>Encerrado em {{ p.encerrado_em }}</strong>{% endif %}

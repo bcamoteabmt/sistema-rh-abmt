@@ -12,7 +12,7 @@
   {% for p in prazos %}
   <tr class="{{ p.vencimento|situacao }}">
     <td>{{ data(p.vencimento) }}</td>
-    <td>{{ p.titulo }}</td>
+    <td>{{ p.titulo }}{% if p.empresa %} <span class="selo">{{ p.empresa }}</span>{% endif %}</td>
     <td><span class="selo">{{ p.categoria }}</span></td>
     <td>{{ p.responsavel or '—' }}</td>
     <td>{{ botao_post(url_for('prazo_concluir', prazo_id=p.id), 'Concluir', voltar=url_for('painel')) }}</td>
@@ -44,7 +44,7 @@
   <a class="card" href="{{ url_for('processo', processo_id=p.id) }}" style="text-decoration:none;color:inherit">
     <span class="selo">{{ TIPOS_PROCESSO[p.tipo] }}</span>
     <strong style="display:block;margin:6px 0 2px">{{ p.colaborador }}</strong>
-    <span class="suave">{{ p.cargo or '' }}{% if p.gestor %} · Gestor: {{ p.gestor }}{% endif %}</span>
+    <span class="suave">{{ p.empresa or '' }}{% if p.cargo %} · {{ p.cargo }}{% endif %}{% if p.gestor %} · Gestor: {{ p.gestor }}{% endif %}</span>
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px">{{ barra(p.feitos, p.total) }}</div>
   </a>
   {% endfor %}

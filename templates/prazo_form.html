@@ -15,6 +15,14 @@
              value="{{ request.form.vencimento or (prazo.vencimento if prazo else '') }}">
     </div>
     <div>
+      <label for="empresa_id">Empresa</label>
+      {% set emp_sel = (request.form.empresa_id or (prazo.empresa_id if prazo else empresa_atual))|string %}
+      <select id="empresa_id" name="empresa_id">
+        <option value="">Todas as empresas</option>
+        {% for e in empresas %}<option value="{{ e.id }}" {{ 'selected' if e.id|string == emp_sel }}>{{ e.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
       <label for="categoria">Categoria</label>
       <select id="categoria" name="categoria">
         {% for c in CATEGORIAS_PRAZO %}

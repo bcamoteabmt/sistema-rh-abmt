@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import abas_cadastro with context %}
+{% block titulo %}Funcionários{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Cadastros</h1>
+  {% if usuario.papel == 'rh' %}<a class="btn" href="{{ url_for('funcionario_form') }}">+ Novo funcionário</a>{% endif %}
+</div>
+{{ abas_cadastro('funcionarios') }}
+<p class="suave">
+  Mostrar:
+  {% for k, v in {'ativos': 'Ativos', 'desligados': 'Desligados', 'todos': 'Todos'}.items() %}
+    {% if k == mostrar %}<strong>{{ v }}</strong>{% else %}<a href="{{ url_for('funcionarios', mostrar=k) }}">{{ v }}</a>{% endif %}{{ ' · ' if not loop.last }}
+  {% endfor %}
+  {% if empresa_atual %} — filtrando pela empresa escolhida no topo{% endif %}
+</p>
+<div class="tabela"><table>
+  <tr><th>Nome</th><th>Empresa</th><th>Área</th><th>Cargo</th><th>Gestor</th><th>Admissão</th><th></th></tr>
+  {% for f in lista %}
+  <tr class="{{ '' if f.ativo else 'inativo' }}">
+    <td>{{ f.nome }}{% if f.e_gestor %} <span class="selo">Gestor</span>{% endif %}
+        {% if not f.ativo %} <span class="selo">Desligado</span>{% endif %}
+        {% if f.matricula %}<br><span class="suave">Matrícula {{ f.matricula }}</span>{% endif %}</td>
+    <td>{{ f.empresa or '—' }}</td>
+    <td>{{ f.area or '—' }}</td>
+    <td>{{ f.cargo or '—' }}</td>
+    <td>{{ f.gestor or '—' }}</td>
+    <td>{{ f.data_admissao|data_br if f.data_admissao else '—' }}</td>
+    <td>{% if usuario.papel == 'rh' %}<a class="btn secundario pequeno" href="{{ url_for('funcionario_form', funcionario_id=f.id) }}">Editar</a>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="suave">Nenhum funcionário encontrado.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

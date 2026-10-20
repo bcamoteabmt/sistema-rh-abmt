@@ -9,7 +9,9 @@ fechamento e os processos de admissão e demissão.
 |---|---|
 | **Painel** | Mostra em uma tela tudo o que vence nos próximos 30 dias, com cores para o que está atrasado (vermelho), vence em até 3 dias (laranja) ou em até 7 dias (amarelo). |
 | **Prazos e lembretes** | Pagamentos, fechamentos e obrigações (folha, FGTS, eSocial, 13º…). Prazos mensais e anuais: ao concluir, o próximo é criado automaticamente. Avisa quando a data cai no fim de semana. |
-| **Admissões e demissões** | Cada processo gera um checklist com prazos calculados a partir da data de início ou do último dia de trabalho. Mostra quem concluiu cada tarefa e quando. |
+| **Seletor de empresa** | No topo da tela: filtra painel, prazos, processos e funcionários por ABMT, AEB ou Assessoria ABMT (ou mostra todas). |
+| **Cadastros** | Funcionários e gestores, empresas (com CNPJ validado), áreas e cargos. Alimentam as listas de seleção do sistema. |
+| **Admissões e demissões** | Admissão com listas de empresa, área, cargo e gestor, e inclusão automática no cadastro de funcionários. Demissão a partir do funcionário cadastrado; ao encerrar, ele é marcado como desligado. Cada processo gera um checklist com prazos calculados a partir da data de início ou do último dia de trabalho. Mostra quem concluiu cada tarefa e quando. |
 | **Procedimentos** | Biblioteca dos procedimentos internos do RH, com busca. |
 | **Checklists** | O RH edita os modelos de tarefas de admissão e de demissão. |
 | **Usuários** | Perfis **RH** (cadastra e edita tudo) e **Gestor** (consulta e marca tarefas como concluídas). |

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import abas_cadastro, botao_post, csrf_input with context %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<h1>Cadastros</h1>
+{{ abas_cadastro(tabela) }}
+<div class="tabela"><table>
+  <tr><th>Nome</th>{% if tabela == 'empresas' %}<th>CNPJ</th>{% endif %}<th>Funcionários ativos</th><th>Situação</th><th></th></tr>
+  {% for r in lista %}
+  <tr class="{{ '' if r.ativo else 'inativo' }}">
+    <td>{{ r.nome }}</td>
+    {% if tabela == 'empresas' %}<td>{{ r.cnpj }}</td>{% endif %}
+    <td>{{ r.ativos }}</td>
+    <td>{{ 'Ativo' if r.ativo else 'Desativado' }}</td>
+    <td style="white-space:nowrap">
+      {% if usuario.papel == 'rh' %}
+      <a class="btn secundario pequeno" href="{{ url_for('cadastro_editar', tabela=tabela, registro_id=r.id) }}">Editar</a>
+      {{ botao_post(url_for('cadastro_alternar', tabela=tabela, registro_id=r.id), 'Desativar' if r.ativo else 'Reativar', 'pequeno secundario') }}
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="suave">Nenhum cadastro ainda.</td></tr>
+  {% endfor %}
+</table></div>
+<p class="suave">Itens desativados deixam de aparecer nas listas de seleção, mas o histórico é mantido.</p>
+
+{% if usuario.papel == 'rh' %}
+<h2>Incluir</h2>
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div><label for="nome">Nome</label><input id="nome" name="nome" required></div>
+    {% if tabela == 'empresas' %}
+    <div><label for="cnpj">CNPJ</label><input id="cnpj" name="cnpj" required placeholder="00.000.000/0000-00"></div>
+    {% endif %}
+  </div>
+  <div class="acoes"><button>Incluir</button></div>
+</form>
+{% endif %}
+{% endblock %}

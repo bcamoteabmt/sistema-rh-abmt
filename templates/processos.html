@@ -3,11 +3,12 @@
 {% block titulo %}Admissões e demissões{% endblock %}
 {% macro tabela(lista, vazio) %}
 <div class="tabela"><table>
-  <tr><th>Colaborador</th><th>Tipo</th><th>Data</th><th>Gestor</th><th>Andamento</th><th>Próxima tarefa</th></tr>
+  <tr><th>Colaborador</th><th>Empresa</th><th>Tipo</th><th>Data</th><th>Gestor</th><th>Andamento</th><th>Próxima tarefa</th></tr>
   {% for p in lista %}
   <tr class="{{ p.proximo_prazo|situacao if not p.encerrado_em }}">
     <td><a href="{{ url_for('processo', processo_id=p.id) }}">{{ p.colaborador }}</a>
         {% if p.cargo %}<br><span class="suave">{{ p.cargo }}</span>{% endif %}</td>
+    <td>{{ p.empresa or '—' }}</td>
     <td><span class="selo">{{ TIPOS_PROCESSO[p.tipo] }}</span></td>
     <td>{{ p.data_referencia|data_br }}</td>
     <td>{{ p.gestor or '—' }}</td>
@@ -15,7 +16,7 @@
     <td>{{ p.proximo_prazo|data_br if p.proximo_prazo else '—' }}</td>
   </tr>
   {% else %}
-  <tr><td colspan="6" class="suave">{{ vazio }}</td></tr>
+  <tr><td colspan="7" class="suave">{{ vazio }}</td></tr>
   {% endfor %}
 </table></div>
 {% endmacro %}

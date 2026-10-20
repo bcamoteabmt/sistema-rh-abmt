@@ -13,7 +13,7 @@
   {% for p in pendentes %}
   <tr class="{{ p.vencimento|situacao }}">
     <td>{{ data(p.vencimento) }}</td>
-    <td>{{ p.titulo }}{% if p.observacoes %}<br><span class="suave">{{ p.observacoes }}</span>{% endif %}</td>
+    <td>{{ p.titulo }} <span class="selo">{{ p.empresa or 'Todas as empresas' }}</span>{% if p.observacoes %}<br><span class="suave">{{ p.observacoes }}</span>{% endif %}</td>
     <td><span class="selo">{{ p.categoria }}</span></td>
     <td>{{ RECORRENCIAS[p.recorrencia] }}</td>
     <td>{{ p.responsavel or '—' }}</td>

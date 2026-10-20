@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import abas_cadastro, csrf_input, opcoes_select with context %}
+{% block titulo %}{{ 'Editar' if func else 'Novo' }} funcionário{% endblock %}
+{% block conteudo %}
+<h1>{{ 'Editar' if func else 'Novo' }} funcionário</h1>
+{{ abas_cadastro('funcionarios') }}
+{% macro valor(campo, padrao=None) %}{{ request.form[campo] if request.method == 'POST' else (func[campo] if func else padrao) or '' }}{% endmacro %}
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div><label for="nome">Nome completo</label><input id="nome" name="nome" required value="{{ valor('nome') }}"></div>
+    <div><label for="matricula">Matrícula (opcional)</label><input id="matricula" name="matricula" value="{{ valor('matricula') }}"></div>
+    <div><label for="email">E-mail corporativo (opcional)</label><input id="email" name="email" type="email" value="{{ valor('email') }}"></div>
+    <div><label for="data_admissao">Data de admissão</label><input id="data_admissao" name="data_admissao" type="date" value="{{ valor('data_admissao') }}"></div>
+    <div><label for="empresa_id">Empresa</label>
+      <select id="empresa_id" name="empresa_id" required>{{ opcoes_select(empresas, valor('empresa_id', empresa_atual)) }}</select></div>
+    <div><label for="area_id">Área</label>
+      <select id="area_id" name="area_id">{{ opcoes_select(areas, valor('area_id')) }}</select></div>
+    <div><label for="cargo_id">Cargo</label>
+      <select id="cargo_id" name="cargo_id">{{ opcoes_select(cargos, valor('cargo_id')) }}</select></div>
+    <div><label for="gestor_id">Gestor imediato</label>
+      <select id="gestor_id" name="gestor_id">{{ opcoes_select(gestores, valor('gestor_id'), '— nenhum —') }}</select></div>
+  </div>
+  {% set e_gestor = request.form.e_gestor if request.method == 'POST' else (func and func.e_gestor) %}
+  {% set desligado = request.form.desligado if request.method == 'POST' else (func and not func.ativo) %}
+  <label class="marcar"><input type="checkbox" name="e_gestor" value="1" {{ 'checked' if e_gestor }}> É gestor (aparece na lista de gestores)</label>
+  {% if func %}<label class="marcar"><input type="checkbox" name="desligado" value="1" {{ 'checked' if desligado }}> Desligado</label>{% endif %}
+  <p class="suave">Áreas, cargos e empresas que faltarem podem ser incluídos nas abas acima. Não registre dados sensíveis (CPF, saúde, salário).</p>
+  <div class="acoes">
+    <button>Salvar</button>
+    <a class="btn secundario" href="{{ url_for('funcionarios') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

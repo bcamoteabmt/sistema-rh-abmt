@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import abas_cadastro, csrf_input with context %}
+{% block titulo %}Editar {{ titulo|lower }}{% endblock %}
+{% block conteudo %}
+<h1>Cadastros</h1>
+{{ abas_cadastro(tabela) }}
+<form method="post" class="card">
+  {{ csrf_input() }}
+  <div class="campos">
+    <div><label for="nome">Nome</label><input id="nome" name="nome" required value="{{ request.form.nome or r.nome }}"></div>
+    {% if tabela == 'empresas' %}
+    <div><label for="cnpj">CNPJ</label><input id="cnpj" name="cnpj" required value="{{ request.form.cnpj or r.cnpj }}"></div>
+    {% endif %}
+  </div>
+  <div class="acoes">
+    <button>Salvar</button>
+    <a class="btn secundario" href="{{ url_for('cadastro', tabela=tabela) }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
